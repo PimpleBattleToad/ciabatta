@@ -84,7 +84,15 @@ const page = text('ciabatta.html');
 check('подключён манифест', /rel="manifest" href="manifest\.json"/.test(page));
 check('есть apple-touch-icon', /rel="apple-touch-icon"/.test(page));
 check('есть theme-color', /name="theme-color"/.test(page));
-check('viewport с viewport-fit=cover (под вырез экрана)', /viewport-fit=cover/.test(page));
+check('нет viewport-fit=cover — содержимое не уезжает под вырез экрана', !/viewport-fit=cover/.test(page));
+check('колонка подсказок переносится, а не nowrap (иначе таблица распирает страницу)',
+  /td\.note,th\.note\{[^}]*white-space:normal/.test(page) && /<td class="note"/.test(page));
+check('длинные подсказки больше не попадают в nowrap-колонку',
+  !/class="num" style="color:var\(--dim\)"/.test(page));
+check('таблицы защищены от обрезки: прокрутка внутри блока',
+  /#recipeTables,#waterBox,#plan\{overflow-x:auto\}/.test(page));
+check('диагностика называет вылезающий элемент',
+  /ВЫЛЕЗАЕТ/.test(page) && /getBoundingClientRect/.test(page));
 check('есть липкая строка с итогом', /id="stickyBar"/.test(page) && /id="sbVal"/.test(page));
 check('липкая строка обновляется в render()', /sbVal[\s\S]{0,80}textContent = g\(r\.totalDough\)/.test(page));
 check('есть регистрация service worker', /serviceWorker\.register\('sw\.js'\)/.test(page));

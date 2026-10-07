@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Калькулятор чиабатты — рецепт и почасовой план</title>
 <meta name="description" content="Рецепт чиабатты под нужный вес: целые граммы, пекарские проценты, температура воды и почасовой план замеса.">
 <meta name="theme-color" content="#141110">
@@ -55,6 +55,8 @@
   th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
   th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* подсказки в таблицах: переносятся, иначе длинная строка распирает страницу */
+  td.note,th.note{text-align:right;white-space:normal;overflow-wrap:break-word}
   tbody tr:last-child td{border-bottom:none}
   .big{font-size:clamp(26px,4.6vw,38px);font-weight:700;color:var(--accent2);font-variant-numeric:tabular-nums}
   .big small{font-size:.45em;color:var(--dim);font-weight:500;margin-left:6px}
@@ -81,6 +83,8 @@
   /* страница никогда не должна выезжать за экран по горизонтали */
   html,body{overflow-x:hidden}
   img,svg,table{max-width:100%}
+  /* если таблица всё же шире экрана — пусть прокручивается внутри себя, а не режется */
+  #recipeTables,#waterBox,#plan{overflow-x:auto}
   .row>*{min-width:0}
   .row label,.hint,td,th,.stat{overflow-wrap:break-word}
   button,input,select{touch-action:manipulation}
@@ -102,7 +106,8 @@
   html.tg .wrap{max-width:720px}
   html.tg #stickyBar{display:flex}
   html.tg body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
-  .diag{margin-top:10px;font-size:12px;line-height:1.45;color:var(--dim);opacity:.8}
+  .diag{margin-top:10px;font-size:12px;line-height:1.45;color:var(--dim);opacity:.8;overflow-wrap:break-word;max-width:100%}
+  #stickyBar span{min-width:0;overflow-wrap:break-word}
 
   @media (max-width:880px){
     body{padding:16px 12px calc(88px + env(safe-area-inset-bottom))}
@@ -544,6 +549,9 @@ function dur(min){
 }
 
 var activePreset = -1;
+// Заполняется только внутри Telegram: показывает размеры вьюпорта и то,
+// что именно вылезает за правый край. Нужно для отладки на телефоне.
+var updateDiag = null;
 
 function renderPresets(){
   $('presets').innerHTML = PRESETS.map(function(p, i){
@@ -674,10 +682,11 @@ function render(){
 
   updateYeastHint();
   save();
+  if (updateDiag) updateDiag();
 }
 
 function tr(a, b, c){
-  return '<tr><td>' + a + '</td><td class="num"><b>' + b + '</b></td><td class="num" style="color:var(--dim)">' + c + '</td></tr>';
+  return '<tr><td>' + a + '</td><td class="num"><b>' + b + '</b></td><td class="note" style="color:var(--dim)">' + c + '</td></tr>';
 }
 function yeastLabel(type){
   return type === 'instant' ? 'Дрожжи сухие быстродействующие'
@@ -818,17 +827,38 @@ if (tg){
                  (typeof window.innerWidth === 'number' && window.innerWidth <= 900);
   if (tgMobile && document.documentElement) document.documentElement.className += ' tg';
 
-  // Диагностическая строка: показывает, что именно видит WebView.
-  // Нужна только чтобы разбираться с масштабом на телефоне — потом её можно убрать.
-  var diag = document.getElementById('diag');
-  if (diag){
-    var vv = window.visualViewport;
-    diag.textContent = 'Экран ' + Math.round(window.innerWidth) + '×' + Math.round(window.innerHeight) +
-      ' CSS px · масштаб ' + (vv ? Math.round(vv.scale * 100) / 100 : 1) +
-      ' · Telegram ' + Math.round(tg.viewportWidth || 0) + '×' + Math.round(tg.viewportHeight || 0) +
-      ' (устойчивая ' + Math.round(tg.viewportStableHeight || 0) + ')' +
-      ' · dpr ' + (window.devicePixelRatio || 1) + ' · ' + (tg.platform || '?');
-    diag.hidden = false;
+  // Диагностическая строка: показывает, что именно видит WebView и что вылезает
+  // за правый край. Нужна, чтобы разбираться с масштабом на телефоне.
+  var diagEl = document.getElementById('diag');
+  if (diagEl){
+    updateDiag = function(){
+      try {
+        var vw = document.documentElement.clientWidth;
+        var vv = window.visualViewport;
+        var worst = null, worstRight = vw + 1;
+        var all = document.body.getElementsByTagName('*');
+        for (var i = 0; i < all.length; i++){
+          var el = all[i];
+          if (el === diagEl) continue;
+          var rc = el.getBoundingClientRect();
+          if (rc.width > 0 && rc.right > worstRight){ worstRight = rc.right; worst = el; }
+        }
+        var head = '';
+        if (worst){
+          head = 'ВЫЛЕЗАЕТ: <' + worst.tagName.toLowerCase() +
+            (worst.className ? ' class="' + String(worst.className).split(' ')[0] + '"' : '') +
+            '> край ' + Math.round(worstRight) + 'px при ширине ' + vw + 'px · ';
+        }
+        diagEl.textContent = head + 'Экран ' + Math.round(window.innerWidth) + '×' + Math.round(window.innerHeight) +
+          ' CSS px · видно ' + Math.round(vv ? vv.width : window.innerWidth) +
+          ' · масштаб ' + (vv ? Math.round(vv.scale * 100) / 100 : 1) +
+          ' · Telegram ' + Math.round(tg.viewportWidth || 0) + '×' + Math.round(tg.viewportHeight || 0) +
+          ' (устойчивая ' + Math.round(tg.viewportStableHeight || 0) + ')' +
+          ' · dpr ' + (window.devicePixelRatio || 1) + ' · ' + (tg.platform || '?');
+        diagEl.hidden = false;
+      } catch (e) { /* диагностика не должна ломать страницу */ }
+    };
+    updateDiag();
   }
 }
 </script>

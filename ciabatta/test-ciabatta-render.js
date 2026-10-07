@@ -75,6 +75,11 @@ const fractional = gramCells.filter(c => /[,.]/.test(c) && !/%/.test(c));
 check('все граммы — целые числа', fractional.length === 0,
   'с дробями: ' + fractional.join(' | '));
 check('граммовых ячеек найдено > 8', gramCells.length > 8, 'найдено ' + gramCells.length);
+// регрессия: длинная подсказка в колонке без переноса распирала страницу шире экрана
+const longNumCells = els.recipeTables.innerHTML.match(/class="num"[^>]*>([^<]{14,})</g) || [];
+check('в колонках без переноса нет длинного текста', longNumCells.length === 0,
+  longNumCells.join(' | ').slice(0, 200));
+check('колонка подсказок помечена классом note', /class="note"/.test(els.recipeTables.innerHTML));
 check('в подсказке сказано про целые граммы', /целые граммы/.test(els.alerts.innerHTML));
 // сумма по таблице основного теста совпадает с итогом
 const tableNums = (els.recipeTables.innerHTML.match(/<b>(\d[\d\u00A0 ]*)<\/b>/g) || [])
