@@ -549,6 +549,9 @@ function dur(min){
 }
 
 var activePreset = -1;
+// Номер сборки: печатается в служебной строке внутри Telegram — по нему сразу
+// видно, свежая ли версия страницы открыта (или Telegram отдал её из кэша).
+var BUILD = 'v6';
 // Заполняется только внутри Telegram: показывает размеры вьюпорта и то,
 // что именно вылезает за правый край. Нужно для отладки на телефоне.
 var updateDiag = null;
@@ -827,14 +830,34 @@ if (tg){
                  (typeof window.innerWidth === 'number' && window.innerWidth <= 900);
   if (tgMobile && document.documentElement) document.documentElement.className += ' tg';
 
-  // Диагностическая строка: показывает, что именно видит WebView и что вылезает
-  // за правый край. Нужна, чтобы разбираться с масштабом на телефоне.
+  // Автоподгонка нужна всегда: если WebView не ужал страницу сам (например,
+  // из-за maximum-scale), ужимаем её мы — иначе правый край обрезается.
+  var fitApplied = false;
+  function fitToScreen(){
+    try {
+      var vv = window.visualViewport;
+      var vw = document.documentElement.clientWidth;
+      if (!fitApplied && vv && vv.width > 0 && vw > vv.width * 1.05 + 2){
+        fitApplied = true;
+        var z = Math.round(vv.width / vw * 1000) / 1000;
+        document.documentElement.style.zoom = z;
+      }
+    } catch (e) { /* не критично */ }
+  }
+  fitToScreen();
+  window.addEventListener('resize', fitToScreen);
+
+  // Служебная строка — только по требованию: добавьте ?debug к адресу.
   var diagEl = document.getElementById('diag');
-  if (diagEl){
+  var wantDiag = typeof location !== 'undefined' && location.search.indexOf('debug') !== -1;
+  if (diagEl && wantDiag){
     updateDiag = function(){
       try {
-        var vw = document.documentElement.clientWidth;
+        var vw = document.documentElement.clientWidth;          // ширина страницы
         var vv = window.visualViewport;
+        var vis = vv ? Math.round(vv.width) : vw;               // что реально видно
+        var fit = document.documentElement.style.zoom ? ' · ужато до ' + document.documentElement.style.zoom : '';
+
         var worst = null, worstRight = vw + 1;
         var all = document.body.getElementsByTagName('*');
         for (var i = 0; i < all.length; i++){
@@ -845,16 +868,15 @@ if (tg){
         }
         var head = '';
         if (worst){
-          head = 'ВЫЛЕЗАЕТ: <' + worst.tagName.toLowerCase() +
-            (worst.className ? ' class="' + String(worst.className).split(' ')[0] + '"' : '') +
-            '> край ' + Math.round(worstRight) + 'px при ширине ' + vw + 'px · ';
+          head = 'ВЫЛЕЗАЕТ ' + worst.tagName.toLowerCase() +
+            (worst.className ? '.' + String(worst.className).split(' ')[0] : '') +
+            ' ' + Math.round(worstRight) + '>' + vw + ' · ';
         }
-        diagEl.textContent = head + 'Экран ' + Math.round(window.innerWidth) + '×' + Math.round(window.innerHeight) +
-          ' CSS px · видно ' + Math.round(vv ? vv.width : window.innerWidth) +
+
+        diagEl.textContent = head + BUILD + ' · ширина ' + vw + ' · видно ' + vis +
           ' · масштаб ' + (vv ? Math.round(vv.scale * 100) / 100 : 1) +
-          ' · Telegram ' + Math.round(tg.viewportWidth || 0) + '×' + Math.round(tg.viewportHeight || 0) +
-          ' (устойчивая ' + Math.round(tg.viewportStableHeight || 0) + ')' +
-          ' · dpr ' + (window.devicePixelRatio || 1) + ' · ' + (tg.platform || '?');
+          ' · TG ' + Math.round(tg.viewportWidth || 0) + '×' + Math.round(tg.viewportHeight || 0) +
+          ' · dpr ' + (window.devicePixelRatio || 1) + ' · ' + (tg.platform || '?') + fit;
         diagEl.hidden = false;
       } catch (e) { /* диагностика не должна ломать страницу */ }
     };

@@ -93,6 +93,12 @@ check('таблицы защищены от обрезки: прокрутка �
   /#recipeTables,#waterBox,#plan\{overflow-x:auto\}/.test(page));
 check('диагностика называет вылезающий элемент',
   /ВЫЛЕЗАЕТ/.test(page) && /getBoundingClientRect/.test(page));
+check('в диагностике есть номер сборки — видно, свежая ли версия открыта',
+  /var BUILD = 'v\d+'/.test(page) && /BUILD \+ ' · ширина '/.test(page));
+check('есть автоподгонка: страница ужимается, если вьюпорт шире экрана',
+  /style\.zoom = z/.test(page) && /vv\.width \* 1\.05/.test(page));
+check('служебная строка скрыта и включается только по ?debug',
+  /location\.search\.indexOf\('debug'\)/.test(page) && /<div id="diag"[^>]*hidden/.test(page));
 check('есть липкая строка с итогом', /id="stickyBar"/.test(page) && /id="sbVal"/.test(page));
 check('липкая строка обновляется в render()', /sbVal[\s\S]{0,80}textContent = g\(r\.totalDough\)/.test(page));
 check('есть регистрация service worker', /serviceWorker\.register\('sw\.js'\)/.test(page));
@@ -138,7 +144,7 @@ check('страница не выезжает по горизонтали', /htm
 check('в Telegram на телефоне принудительно одна колонка', /html\.tg \.grid\{grid-template-columns:1fr\}/.test(page));
 check('класс tg ставится по platform android/ios или узкому вьюпорту',
   /tg\.platform === 'android'/.test(page) && /className \+= ' tg'/.test(page));
-check('есть диагностическая строка вьюпорта', /id="diag"/.test(page) && /viewportStableHeight/.test(page));
+check('есть диагностическая строка вьюпорта', /id="diag"/.test(page) && /· видно /.test(page));
 
 // ---------- 4c. архив для публикации ----------
 console.log('\n-- архив для публикации --');
