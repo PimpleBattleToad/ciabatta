@@ -123,6 +123,14 @@ check('обёрнуто в try/catch — старый клиент не слом
   /if \(tg\)\{[\s\S]{0,400}try \{[\s\S]{0,400}catch/.test(page));
 check('данные tgWebAppData из адреса не читаются и не отправляются',
   !/tgWebAppData/.test(page) && !/initData/.test(page));
+check('масштаб зафиксирован: maximum-scale=1 (иначе страница остаётся увеличенной)',
+  /maximum-scale=1/.test(page), 'нет maximum-scale в viewport');
+check('запрещён зум пользователем: user-scalable=no', /user-scalable=no/.test(page));
+check('страница не выезжает по горизонтали', /html,body\{overflow-x:hidden\}/.test(page));
+check('в Telegram на телефоне принудительно одна колонка', /html\.tg \.grid\{grid-template-columns:1fr\}/.test(page));
+check('класс tg ставится по platform android/ios или узкому вьюпорту',
+  /tg\.platform === 'android'/.test(page) && /className \+= ' tg'/.test(page));
+check('есть диагностическая строка вьюпорта', /id="diag"/.test(page) && /viewportStableHeight/.test(page));
 
 // ---------- 4c. архив для публикации ----------
 console.log('\n-- архив для публикации --');
