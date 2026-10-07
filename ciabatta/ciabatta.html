@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Калькулятор чиабатты — рецепт и почасовой план</title>
+<meta name="description" content="Рецепт чиабатты под нужный вес: целые граммы, пекарские проценты, температура воды и почасовой план замеса.">
+<meta name="theme-color" content="#141110">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Чиабатта">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<!-- нужен только для запуска внутри Telegram; офлайн и в браузере не мешает -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%23141110"/><rect x="5" y="11" width="22" height="10" rx="5" fill="%23e8a33d"/><path d="M11 18l3-4M16 18l3-4M21 18l3-4" stroke="%23965f14" stroke-width="2" stroke-linecap="round"/></svg>'>
+<style>
+  :root{
+    --bg:#141110; --panel:#1e1a18; --panel2:#262120; --line:#3a3230;
+    --ink:#f3ece6; --dim:#b6a89f; --accent:#e8a33d; --accent2:#8fbf6a;
+    --warn:#e8734d; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:radial-gradient(1200px 700px at 15% -10%, #2a2320, var(--bg)) no-repeat, var(--bg);
+    color:var(--ink); font:16px/1.5 "Segoe UI", Roboto, system-ui, sans-serif;
+    padding:28px 18px 60px;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+  header h1{margin:0 0 6px;font-size:clamp(22px,3.4vw,34px);letter-spacing:.2px}
+  header p{margin:0 0 22px;color:var(--dim)}
+  .presets{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 22px}
+  .presets button{
+    background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    padding:9px 14px;border-radius:999px;cursor:pointer;font-size:14px;
+  }
+  .presets button:hover{border-color:var(--accent);color:var(--accent)}
+  .presets button.on{background:var(--accent);border-color:var(--accent);color:#241a09;font-weight:600}
+  .grid{display:grid;grid-template-columns:minmax(300px,1fr) minmax(320px,1.25fr);gap:18px;align-items:start}
+  @media (max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 20px}
+  .card h2{margin:0 0 14px;font-size:17px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent)}
+  .card h3{margin:22px 0 10px;font-size:15px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
+  .row{display:grid;grid-template-columns:1fr 118px;gap:10px;align-items:center;margin-bottom:12px}
+  .row label{font-size:14.5px;color:var(--ink)}
+  .row .hint{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+  input[type=number],input[type=time],select{
+    width:100%;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:9px;padding:9px 10px;font-size:15px;font-family:inherit;
+  }
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .sub{font-size:12.5px;color:var(--dim);margin:-6px 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  .big{font-size:clamp(26px,4.6vw,38px);font-weight:700;color:var(--accent2);font-variant-numeric:tabular-nums}
+  .big small{font-size:.45em;color:var(--dim);font-weight:500;margin-left:6px}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 16px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13.5px;color:var(--dim)}
+  .stat b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .alert{border-radius:10px;padding:11px 13px;margin:0 0 14px;font-size:14px;border:1px solid}
+  .alert.err{background:rgba(232,115,77,.12);border-color:var(--warn);color:#ffd9cb}
+  .alert.ok{background:rgba(143,191,106,.10);border-color:#4c6b39;color:#dbecc9}
+  ol.steps{margin:0;padding-left:22px}
+  ol.steps li{margin-bottom:9px;font-size:14.5px}
+  ol.steps b{color:var(--accent)}
+  .toolbar{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .toolbar button{
+    background:var(--accent);color:#241a09;border:none;border-radius:10px;
+    padding:11px 16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .toolbar button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
+  .toolbar button:hover{filter:brightness(1.08)}
+  footer{margin-top:26px;color:var(--dim);font-size:13px}
+  .flag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12.5px;color:var(--dim);margin-left:8px}
+  /* ---------- телефон ---------- */
+  html{-webkit-text-size-adjust:100%}
+  #stickyBar{display:none}
+  @media (max-width:880px){
+    body{padding:16px 12px calc(88px + env(safe-area-inset-bottom))}
+    header h1{font-size:23px;line-height:1.25}
+    header p{font-size:14px;margin-bottom:16px}
+    .card{padding:14px 14px 16px;border-radius:12px}
+    .card h2{font-size:15.5px}
+    .row{grid-template-columns:1fr 106px;gap:8px;margin-bottom:10px}
+    .row label{font-size:15px}
+    input[type=number],input[type=time],select{font-size:16px;min-height:46px;padding:10px}
+    .presets{gap:8px;margin-bottom:16px}
+    .presets button{font-size:14px;padding:10px 14px;min-height:44px}
+    .toolbar button{flex:1 1 100%;min-height:50px;font-size:16px}
+    table{font-size:15px}
+    th,td{padding:9px 4px}
+    .big{font-size:36px}
+    .stat{font-size:13px;padding:7px 10px}
+    /* липкая строка с итогом, чтобы не листать вверх-вниз */
+    #stickyBar{
+      display:flex;align-items:center;gap:12px;position:fixed;left:0;right:0;bottom:0;z-index:20;
+      padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+      background:rgba(30,26,24,.97);border-top:1px solid var(--line);
+    }
+    #stickyBar .sb-val{display:block;font-size:20px;font-weight:700;color:var(--accent2);font-variant-numeric:tabular-nums;line-height:1.15}
+    #stickyBar .sb-lab{display:block;font-size:12.5px;color:var(--dim)}
+    #stickyBar button{
+      margin-left:auto;background:var(--accent);color:#241a09;border:none;border-radius:10px;
+      padding:12px 16px;font-size:15.5px;font-weight:600;font-family:inherit;min-height:48px;
+    }
+  }
+  @media print{
+    body{background:#fff;color:#000;padding:0}
+    .presets,.toolbar,#stickyBar{display:none!important}
+    .card{border-color:#ccc;background:#fff;box-shadow:none}
+    .card h2,.card h3{color:#000}
+    .big{color:#000}.stat{background:#f4f4f4;color:#333;border-color:#ddd}
+    .grid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Чиабатта — калькулятор рецепта</h1>
+    <p>Считает точные граммы под нужный вес теста, показывает baker's percentages, температуру воды и почасовой план работы. Работает офлайн и на телефоне — страницу можно добавить на главный экран.</p>
+  </header>
+
+  <div class="presets" id="presets"></div>
+
+  <div class="grid">
+    <!-- ЛЕВАЯ КОЛОНКА: ВВОД -->
+    <section class="card">
+      <h2>Параметры</h2>
+
+      <h3>Количество теста</h3>
+      <div class="row">
+        <label for="mode">От чего считаем</label>
+        <select id="mode">
+          <option value="dough">Вес теста</option>
+          <option value="flour">Вес муки</option>
+          <option value="loaves">Число буханок</option>
+        </select>
+      </div>
+      <div id="modeInputs"></div>
+
+      <h3>Состав теста</h3>
+      <div class="row">
+        <label for="hydration">Гидратация (вода, % от всей муки)
+          <span class="hint">чиабатта 72–82 %</span></label>
+        <input type="number" id="hydration" value="75" min="50" max="110" step="1">
+      </div>
+      <div class="row">
+        <label for="salt">Соль (% от всей муки)
+          <span class="hint">норма 1,8–2,2 %</span></label>
+        <input type="number" id="salt" value="2" min="0" max="4" step="0.1">
+      </div>
+      <div class="row">
+        <label for="yeastType">Тип дрожжей</label>
+        <select id="yeastType">
+          <option value="fresh">Свежие прессованные</option>
+          <option value="instant">Сухие быстродействующие</option>
+          <option value="active">Сухие активные</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="yeastPct">Дрожжи (% от всей муки)
+          <span class="hint" id="yeastHint">долгое брожение: 0,5–1 % свежих</span></label>
+        <input type="number" id="yeastPct" value="0.8" min="0" max="5" step="0.05">
+      </div>
+
+      <h3>Закваска (бига / поляш)</h3>
+      <div class="row">
+        <label for="prefPct">Доля муки в закваске, %
+          <span class="hint">0 % — прямой замес</span></label>
+        <input type="number" id="prefPct" value="40" min="0" max="80" step="5">
+      </div>
+      <div class="row">
+        <label for="prefHyd">Гидратация закваски, %
+          <span class="hint">бига 45–55 %, поляш 100 %</span></label>
+        <input type="number" id="prefHyd" value="45" min="30" max="120" step="1">
+      </div>
+      <div class="row">
+        <label for="prefYeastShare">Доля дрожжей в закваске, %</label>
+        <input type="number" id="prefYeastShare" value="100" min="0" max="100" step="10">
+      </div>
+      <div class="row">
+        <label for="prefHours">Брожение закваски, часов</label>
+        <input type="number" id="prefHours" value="16" min="1" max="48" step="1">
+      </div>
+      <div class="row">
+        <label for="prefTemp">Температура закваски, °C
+          <span class="hint">бига 16–18 °C</span></label>
+        <input type="number" id="prefTemp" value="17" min="4" max="35" step="1">
+      </div>
+
+      <h3>Температура теста и план</h3>
+      <div class="row">
+        <label for="ddt">Желаемая температура теста, °C</label>
+        <input type="number" id="ddt" value="24" min="18" max="30" step="1">
+      </div>
+      <div class="row">
+        <label for="flourTemp">Температура муки, °C</label>
+        <input type="number" id="flourTemp" value="21" min="5" max="35" step="1">
+      </div>
+      <div class="row">
+        <label for="roomTemp">Температура в помещении, °C</label>
+        <input type="number" id="roomTemp" value="23" min="5" max="35" step="1">
+      </div>
+      <div class="row">
+        <label for="friction">Поправка на замес (трение), °C
+          <span class="hint">руками ≈ 3, планетарный ≈ 5, спиральный ≈ 7</span></label>
+        <input type="number" id="friction" value="5" min="0" max="14" step="1">
+      </div>
+      <div class="row">
+        <label for="start">Время начала работы</label>
+        <input type="time" id="start" value="09:00">
+      </div>
+      <div class="sub" id="savedNote"></div>
+    </section>
+
+    <!-- ПРАВАЯ КОЛОНКА: РЕЗУЛЬТАТ -->
+    <section class="card" id="result">
+      <h2>Рецепт</h2>
+      <div id="alerts"></div>
+      <div class="big" id="bigNumber">—</div>
+      <div class="stats" id="stats"></div>
+      <div id="recipeTables"></div>
+      <div id="waterBox"></div>
+      <h2 style="margin-top:26px">Пошаговый план</h2>
+      <div id="plan"></div>
+      <div class="toolbar">
+        <button id="printBtn" type="button">Печать / PDF</button>
+        <button id="copyBtn" type="button" class="ghost">Скопировать рецепт текстом</button>
+      </div>
+    </section>
+  </div>
+
+  <footer>Расчёт по правилам пекарских процентов: вся мука = 100 %. Все граммовки — целые числа: мука закваски + мука теста = вся мука, а итог теста всегда равен заданному весу. Вес готовой буханки меньше веса теста примерно на 12–15 % (усушка при выпечке).</footer>
+</div>
+
+<!-- итог всегда перед глазами на телефоне -->
+<div id="stickyBar">
+  <span><span class="sb-val" id="sbVal">—</span><span class="sb-lab">теста всего</span></span>
+  <button type="button" id="sbJump">К рецепту ↓</button>
+</div>
+
+<script>
+/*CALC-START*/
+/**
+ * Чистая функция расчёта рецепта. Никакого DOM — удобно тестировать.
+ * s = {
+ *   mode:'flour'|'dough'|'loaves', flourWeight, doughWeight, loaves, loafWeight,
+ *   hydration, salt, yeastPct, prefPct, prefHyd, prefYeastShare
+ * }
+ * Проценты передаются как числа (75 = 75 %).
+ */
+function computeRecipe(s){
+  var hydration = s.hydration / 100;
+  var saltPct   = s.salt / 100;
+  var yeastPct  = s.yeastPct / 100;
+  var prefShare = Math.min(Math.max(s.prefPct, 0), 100) / 100;
+  var prefHyd   = s.prefHyd / 100;
+
+  var flour;
+  if (s.mode === 'flour') {
+    flour = s.flourWeight;
+  } else if (s.mode === 'dough') {
+    flour = s.doughWeight / (1 + hydration + saltPct + yeastPct);
+  } else {
+    flour = (s.loaves * s.loafWeight) / (1 + hydration + saltPct + yeastPct);
+  }
+  if (!isFinite(flour) || flour <= 0) return null;
+
+  var prefFlour = flour * prefShare;
+  var mainFlour = flour - prefFlour;
+  var prefWater = prefFlour * prefHyd;
+  var totalWater = flour * hydration;
+  var mainWater = totalWater - prefWater;
+  var salt = flour * saltPct;
+  var yeast = flour * yeastPct;
+  // если закваски нет — все дрожжи идут в основное тесто
+  var prefYeast = prefFlour > 0 ? yeast * (s.prefYeastShare / 100) : 0;
+  var mainYeast = yeast - prefYeast;
+
+  var prefWeight = prefFlour + prefWater + prefYeast;
+  var totalDough = flour + totalWater + salt + yeast;
+
+  return {
+    flour: flour,
+    mainFlour: mainFlour,
+    prefFlour: prefFlour,
+    prefWater: prefWater,
+    mainWater: mainWater,
+    totalWater: totalWater,
+    salt: salt,
+    yeast: yeast,
+    prefYeast: prefYeast,
+    mainYeast: mainYeast,
+    prefWeight: prefWeight,
+    totalDough: totalDough,
+    // проценты от общей муки
+    pFlour: 100,
+    pWater: hydration * 100,
+    pSalt: saltPct * 100,
+    pYeast: yeastPct * 100,
+    pPref: flour > 0 ? prefWeight / flour * 100 : 0,
+    // контроль
+    doughHydration: totalDough > 0 ? totalWater / totalDough * 100 : 0,
+    saltInDough: totalDough > 0 ? salt / totalDough * 100 : 0,
+    prefName: prefShare === 0 ? 'без закваски' : (prefHyd <= 0.65 ? 'бига' : 'поляш'),
+    waterDeficit: mainWater < 0 ? -mainWater : 0
+  };
+}
+
+/** Округление до целых граммов: всё, что больше нуля, но меньше грамма, показываем как 1 г. */
+function rnd(x){ return (x > 0 && x < 1) ? 1 : Math.round(x); }
+
+/**
+ * Целые граммы с сохранением всех сумм:
+ * мука = мука закваски + мука теста, вода и дрожжи так же,
+ * итог = сумма компонентов = заданному весу теста.
+ */
+function roundRecipe(r, targetDough){
+  if (!r) return null;
+  var shareF     = r.flour > 0 ? r.prefFlour / r.flour : 0;
+  var hyd        = r.flour > 0 ? r.totalWater / r.flour : 0;
+  var prefHyd    = r.prefFlour > 0 ? r.prefWater / r.prefFlour : 0;
+  var saltPct    = r.flour > 0 ? r.salt / r.flour : 0;
+  var yeastPct   = r.flour > 0 ? r.yeast / r.flour : 0;
+  var yeastShare = r.yeast > 0 ? r.prefYeast / r.yeast : 0;
+
+  function build(f){
+    var prefFlour  = r.prefFlour > 0 ? rnd(f * shareF) : 0;
+    var totalWater = rnd(f * hyd);
+    var prefWater  = prefFlour > 0 ? rnd(prefFlour * prefHyd) : 0;
+    var mainWater  = totalWater - prefWater;
+    if (mainWater < 0 && prefWater > 0){ prefWater += mainWater; mainWater = 0; }
+    var salt = rnd(f * saltPct);
+    var yeast = rnd(f * yeastPct);
+    var prefYeast = (yeast > 0 && prefFlour > 0) ? rnd(yeast * yeastShare) : 0;
+    return {
+      flour: f, prefFlour: prefFlour, mainFlour: f - prefFlour,
+      totalWater: totalWater, prefWater: prefWater, mainWater: mainWater,
+      salt: salt, yeast: yeast, prefYeast: prefYeast, mainYeast: yeast - prefYeast,
+      prefWeight: prefFlour + prefWater + prefYeast,
+      totalDough: f + totalWater + salt + yeast
+    };
+  }
+
+  var f0 = Math.max(1, Math.round(r.flour));
+  var best = build(f0);
+  if (targetDough){
+    // ищем целую муку, при которой итог ближе всего к заданному весу теста
+    var bestErr = Math.abs(best.totalDough - targetDough);
+    for (var d = -6; d <= 6; d++){
+      var f = f0 + d;
+      if (f < 1) continue;
+      var cand = build(f);
+      var err = Math.abs(cand.totalDough - targetDough);
+      if (err < bestErr || (err === bestErr && Math.abs(f - r.flour) < Math.abs(best.flour - r.flour))){
+        best = cand; bestErr = err;
+      }
+    }
+    // остаток округления убираем в воду — итог точно совпадает с заданным весом
+    var resid = targetDough - best.totalDough;
+    if (resid !== 0 && Math.abs(resid) <= 10 && best.mainWater + resid >= 0){
+      best.mainWater += resid;
+      best.totalWater = best.prefWater + best.mainWater;
+      best.totalDough = best.flour + best.totalWater + best.salt + best.yeast;
+    }
+  }
+
+  var out = best;
+  out.pFlour = 100;
+  out.pWater = out.flour > 0 ? out.totalWater / out.flour * 100 : 0;
+  out.pSalt  = out.flour > 0 ? out.salt / out.flour * 100 : 0;
+  out.pYeast = out.flour > 0 ? out.yeast / out.flour * 100 : 0;
+  out.pPref  = out.flour > 0 ? out.prefWeight / out.flour * 100 : 0;
+  out.doughHydration = out.totalDough > 0 ? out.totalWater / out.totalDough * 100 : 0;
+  out.saltInDough = out.totalDough > 0 ? out.salt / out.totalDough * 100 : 0;
+  out.prefName = r.prefName;
+  out.waterDeficit = r.waterDeficit;
+  out.targetDelta = targetDough ? out.totalDough - targetDough : 0;
+  out.hydDeviation = out.pWater - (r.pWater || 0);
+  out.bumped = (r.totalWater > 0 && r.totalWater < 1) || (r.prefFlour > 0 && r.prefFlour < 1) ||
+               (r.prefWater > 0 && r.prefWater < 1) || (r.salt > 0 && r.salt < 1) || (r.yeast > 0 && r.yeast < 1);
+  return out;
+}
+
+/** Температура воды по правилу: ЖТ = (мука + помещение + вода + трение) / 3 */
+function waterTemp(ddt, flourTemp, roomTemp, friction){
+  return 3 * ddt - flourTemp - roomTemp - friction;
+}
+
+/** План работ: минуты от старта. */
+function buildPlan(s, prefName){
+  var steps = [];
+  var t = 0;
+  if (s.prefPct > 0){
+    steps.push({at:t, min:10, title:'Замесить ' + prefName,
+      text:'Смешать муку закваски, воду и дрожжи до однородности, 3–4 минуты. Накрыть.'});
+    t += 10;
+    steps.push({at:t, min:s.prefHours*60, title:'Брожение ' + prefName + ' — ' + s.prefHours + ' ч при ' + s.prefTemp + ' °C',
+      text: prefName === 'бига'
+        ? 'Тесто плотное, к концу — пористое, с запахом дрожжей и лёгкой кислинкой.'
+        : 'Поляш жидкий, весь в пузырях, при постукивании опадает.'});
+    t += s.prefHours * 60;
+  }
+  steps.push({at:t, min:15, title:'Замес основного теста',
+    text:'Смешать всю оставшуюся муку с водой (кроме ~30 г воды), дать 20 минут автолиза, затем добавить соль, дрожжи и закваску. Месить 8–10 минут, воду добавлять понемногу — тесто должно стать липким, но тянущимся.'});
+  t += 15;
+  steps.push({at:t, min:90, title:'Брожение с 3 складываниями',
+    text:'Складывать тесто каждые 30 минут: смочить руки, растянуть и сложить вчетверо. Тесто должно увеличиться почти вдвое и держать пузыри.'});
+  t += 90;
+  steps.push({at:t, min:20, title:'Формование',
+    text:'Выложить на щедро посыпанную мукой поверхность, не обминать. Разделить, расправить в прямоугольники 25×10 см, перенести на пергамент швом вниз.'});
+  t += 20;
+  steps.push({at:t, min:60, title:'Расстойка — 45–60 минут',
+    text:'Под полотенцем, при комнатной температуре. Заготовка должна стать воздушной, при нажатии пальцем — медленно возвращаться.'});
+  t += 60;
+  steps.push({at:t, min:45, title:'Выпечка с паром',
+    text:'Духовка и камень 250 °C, прогреть 40 минут. 10 минут с паром, затем 230 °C ещё 15–20 минут до тёмно-золотистой корки. Внутри 96 °C.'});
+  t += 45;
+  return {steps: steps, totalMinutes: t};
+}
+/*CALC-END*/
+
+// ---------- Пресеты ----------
+var PRESETS = [
+  { name:'Классика на биге',
+    v:{mode:'dough', doughWeight:1000, hydration:75, salt:2, yeastType:'fresh', yeastPct:0.8,
+       prefPct:40, prefHyd:45, prefYeastShare:100, prefHours:16, prefTemp:17}},
+  { name:'Быстрая бига (4 ч)',
+    v:{mode:'dough', doughWeight:1000, hydration:78, salt:2, yeastType:'fresh', yeastPct:1.5,
+       prefPct:40, prefHyd:50, prefYeastShare:100, prefHours:4, prefTemp:22}},
+  { name:'На поляше (100 % воды)',
+    v:{mode:'dough', doughWeight:1000, hydration:78, salt:2, yeastType:'fresh', yeastPct:1,
+       prefPct:30, prefHyd:100, prefYeastShare:100, prefHours:12, prefTemp:22}},
+  { name:'Прямой замес (за 3 часа)',
+    v:{mode:'dough', doughWeight:1000, hydration:80, salt:2, yeastType:'instant', yeastPct:0.5,
+       prefPct:0, prefHyd:45, prefYeastShare:100, prefHours:1, prefTemp:24}},
+  { name:'С цельным зерном (30 % муки в биге)',
+    v:{mode:'dough', doughWeight:1000, hydration:80, salt:2, yeastType:'fresh', yeastPct:1,
+       prefPct:30, prefHyd:50, prefYeastShare:100, prefHours:14, prefTemp:18}}
+];
+
+var ids = ['mode','flourWeight','doughWeight','loaves','loafWeight','hydration','salt','yeastType',
+  'yeastPct','prefPct','prefHyd','prefYeastShare','prefHours','prefTemp','ddt','flourTemp',
+  'roomTemp','friction','start'];
+var DEFAULTS = {flourWeight:500, doughWeight:1000, loaves:2, loafWeight:350,
+  hydration:75, salt:2, yeastType:'fresh', yeastPct:0.8, prefPct:40, prefHyd:45,
+  prefYeastShare:100, prefHours:16, prefTemp:17, ddt:24, flourTemp:21, roomTemp:23,
+  friction:5, start:'09:00', mode:'dough'};
+
+var $ = function(id){ return document.getElementById(id); };
+var STORE = 'ciabatta-calc-v1';
+
+var cache = {}; // последние введённые значения — чтобы не терять их при смене режима расчёта
+Object.keys(DEFAULTS).forEach(function(k){ cache[k] = DEFAULTS[k]; });
+
+function readState(){
+  var s = {};
+  ids.forEach(function(id){
+    var el = $(id);
+    if (!el) return;
+    s[id] = (el.type === 'number') ? parseFloat(el.value) : el.value;
+    if (el.type === 'number' && !isFinite(s[id])) s[id] = cache[id] !== undefined ? cache[id] : DEFAULTS[id];
+    cache[id] = s[id];
+  });
+  return s;
+}
+function writeState(s){
+  Object.keys(s).forEach(function(k){ cache[k] = s[k]; });
+  ids.forEach(function(id){
+    var el = $(id);
+    if (el && s[id] !== undefined) el.value = s[id];
+  });
+  renderModeInputs();
+  activePreset = -1;
+  render();
+}
+function num(id, label, hint, min, max, step, fallback){
+  var v = (cache[id] !== undefined && isFinite(cache[id])) ? cache[id] : fallback;
+  return row(id, label, hint, v, min, max, step);
+}
+function renderModeInputs(){
+  var mode = $('mode').value;
+  var html = '';
+  if (mode === 'flour'){
+    html = num('flourWeight','Мука, всего грамм','', 50, 20000, 10, 500);
+  } else if (mode === 'dough'){
+    html = num('doughWeight','Общий вес теста, грамм','', 100, 20000, 10, 1000);
+  } else {
+    html = num('loaves','Количество буханок','', 1, 40, 1, 2) +
+           num('loafWeight','Вес одной буханки, грамм','готовый вес ≈ на 12–15 % меньше', 80, 2000, 10, 350);
+  }
+  $('modeInputs').innerHTML = html;
+  ids.forEach(function(id){
+    var el = $(id);
+    if (el && el.type === 'number' && !isFinite(parseFloat(el.value)) && DEFAULTS[id] !== undefined){
+      el.value = DEFAULTS[id];
+    }
+  });
+}
+function row(id, label, hint, val, min, max, step){
+  return '<div class="row"><label for="' + id + '">' + label +
+    (hint ? '<span class="hint">' + hint + '</span>' : '') +
+    '</label><input type="number" id="' + id + '" value="' + val + '" min="' + min +
+    '" max="' + max + '" step="' + step + '"></div>';
+}
+
+/** Граммы — всегда целые числа. */
+function g(n){
+  if (!isFinite(n)) return '—';
+  return Math.round(n).toLocaleString('ru-RU');
+}
+function pct(n){ return (Math.round(n * 10) / 10).toLocaleString('ru-RU', {maximumFractionDigits: 1}) + ' %'; }
+function clock(baseHHMM, addMin){
+  var parts = (baseHHMM || '09:00').split(':');
+  var h = parseInt(parts[0], 10) || 0, m = parseInt(parts[1], 10) || 0;
+  var total = ((h * 60 + m + addMin) % 1440 + 1440) % 1440;
+  return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+}
+function dur(min){
+  var h = Math.floor(min / 60), m = min % 60;
+  if (h && m) return h + ' ч ' + m + ' мин';
+  if (h) return h + ' ч';
+  return m + ' мин';
+}
+
+var activePreset = -1;
+
+function renderPresets(){
+  $('presets').innerHTML = PRESETS.map(function(p, i){
+    return '<button type="button" data-i="' + i + '" class="' + (i === activePreset ? 'on' : '') + '">' + p.name + '</button>';
+  }).join('');
+}
+function applyPreset(i){
+  activePreset = i;
+  var patch = PRESETS[i].v;
+  var s = readState();
+  Object.keys(patch).forEach(function(k){ s[k] = patch[k]; });
+  writeState(s);
+  renderPresets();
+  render();
+}
+
+function render(){
+  renderPresets();
+  var s = readState();
+  // желаемый вес теста — чтобы целые граммы в сумме давали ровно столько
+  var target = s.mode === 'dough' ? Math.round(s.doughWeight)
+             : (s.mode === 'loaves' ? Math.round(s.loaves * s.loafWeight) : null);
+  var r = roundRecipe(computeRecipe(s), target);
+  var alerts = [];
+
+  if (!r){
+    $('bigNumber').textContent = '—';
+    var sb0 = $('sbVal');
+    if (sb0) sb0.textContent = '—';
+    $('stats').innerHTML = '';
+    $('recipeTables').innerHTML = '';
+    $('waterBox').innerHTML = '';
+    $('plan').innerHTML = '';
+    $('alerts').innerHTML = '<div class="alert err">Проверьте введённые числа.</div>';
+    return;
+  }
+
+  if (r.waterDeficit > 0.5){
+    alerts.push('<div class="alert err">Воды в закваске (' + g(r.prefWater) +
+      ' г) больше, чем нужно на всю гидратацию. Уменьшите долю муки в закваске, увеличьте общую гидратацию или снизьте гидратацию закваски.</div>');
+  }
+
+  var tWater = waterTemp(s.ddt, s.flourTemp, s.roomTemp, s.friction);
+  if (tWater < 0) alerts.push('<div class="alert err">Расчётная температура воды отрицательная (' + Math.round(tWater) +
+    ' °C): мука и помещение слишком тёплые для желаемых ' + s.ddt + ' °C. Охладите муку или добавьте воду со льдом.</div>');
+  else if (tWater > 30) alerts.push('<div class="alert err">Вода должна быть теплее 30 °C — тесто перегреется. Снизьте желаемую температуру теста.</div>');
+  if (r.waterDeficit <= 0.5 && tWater >= 0 && tWater <= 30){
+    var note = '';
+    if (Math.abs(r.hydDeviation) >= 0.05){
+      note += ' Из-за округления гидратация вышла ' + pct(r.pWater) + ' вместо ' + pct(s.hydration) + '.';
+    }
+    if (r.bumped) note += ' Количества меньше 1 г показаны как 1 г.';
+    alerts.push('<div class="alert ok">Расчёт готов: все веса — целые граммы, теста ровно ' + g(r.totalDough) +
+      ' г при гидратации ' + pct(r.pWater) + ' и соли ' + pct(r.pSalt) + '.' + note + '</div>');
+  }
+  $('alerts').innerHTML = alerts.join('');
+
+  $('bigNumber').innerHTML = g(r.totalDough) + ' <small>г теста всего</small>';
+  var sbVal = $('sbVal');
+  if (sbVal) sbVal.textContent = g(r.totalDough) + ' г';
+
+  var loafCount = s.mode === 'loaves' ? s.loaves : Math.max(1, Math.round(r.totalDough / 350));
+  $('stats').innerHTML = [
+    '<span class="stat">мука <b>' + g(r.flour) + ' г</b></span>',
+    '<span class="stat">вода <b>' + g(r.totalWater) + ' г</b></span>',
+    '<span class="stat">соль <b>' + g(r.salt) + ' г</b></span>',
+    '<span class="stat">дрожжи <b>' + g(r.yeast) + ' г</b></span>',
+    '<span class="stat">закваска <b>' + g(r.prefWeight) + ' г</b> (' + r.prefName + ')</span>',
+    '<span class="stat">буханок <b>' + loafCount + '</b> по ≈ ' + g(r.totalDough / loafCount) + ' г теста</span>'
+  ].join('');
+
+  // --- таблицы ---
+  var html = '';
+  if (s.prefPct > 0){
+    html += '<h3>' + r.prefName.charAt(0).toUpperCase() + r.prefName.slice(1) + ' — за ' + s.prefHours + ' ч до замеса</h3>' +
+      '<table><thead><tr><th>Компонент</th><th class="num">Грамм</th><th class="num">% от муки</th></tr></thead><tbody>' +
+      tr('Мука', r.prefFlour, pct(s.prefPct)) +
+      tr('Вода (гидратация ' + s.prefHyd + ' %)', r.prefWater, pct(r.prefFlour > 0 ? s.prefHyd : 0)) +
+      (r.prefYeast > 0 ? tr(yeastLabel(s.yeastType), r.prefYeast, pct(s.yeastPct * s.prefYeastShare / 100)) : '') +
+      '<tr><td><b>Вес закваски</b></td><td class="num"><b>' + g(r.prefWeight) + '</b></td><td class="num">' + pct(r.pPref) + '</td></tr>' +
+      '</tbody></table>';
+  }
+  html += '<h3>Основное тесто (в день выпечки)</h3>' +
+    '<table><thead><tr><th>Компонент</th><th class="num">Грамм</th><th class="num">Критерий</th></tr></thead><tbody>' +
+    (s.prefPct > 0 ? tr('Вся закваска', r.prefWeight, r.prefName) : '') +
+    tr('Мука', r.mainFlour, pct(r.flour > 0 ? r.mainFlour / r.flour * 100 : 0)) +
+    tr('Вода', r.mainWater, pct(r.totalWater > 0 ? r.mainWater / r.flour * 100 : 0)) +
+    (r.mainYeast > 0 ? tr(yeastLabel(s.yeastType), r.mainYeast, pct(r.mainYeast / r.flour * 100)) : '') +
+    tr('Соль', r.salt, pct(s.salt)) +
+    '<tr><td><b>Итого теста</b></td><td class="num"><b>' + g(r.totalDough) + '</b></td><td class="num">100 % муки</td></tr>' +
+    '</tbody></table>';
+
+  html += '<h3>Пекарские проценты</h3>' +
+    '<table><thead><tr><th>Показатель</th><th class="num">Значение</th></tr></thead><tbody>' +
+    tr('Мука', '100 %', '') +
+    tr('Вода', pct(r.pWater), 'задано ' + pct(s.hydration) + ' · ' + pct(r.doughHydration) + ' от веса теста') +
+    tr('Соль', pct(r.pSalt), 'задано ' + pct(s.salt) + ' · ' + pct(r.saltInDough) + ' от веса теста') +
+    tr('Дрожжи', pct(r.pYeast), 'задано ' + pct(s.yeastPct)) +
+    (s.prefPct > 0 ? tr('Закваска', pct(r.pPref), 'из них муки ' + pct(s.prefPct)) : '') +
+    '</tbody></table>';
+  $('recipeTables').innerHTML = html;
+
+  // --- вода и дрожжи ---
+  var conv = yeastConversions(r.yeast, s.yeastType, r.flour);
+  $('waterBox').innerHTML = '<h3>Вода и дрожжи</h3>' +
+    '<div class="stats">' +
+    '<span class="stat">температура воды <b>' + Math.round(tWater) + ' °C</b></span>' +
+    '<span class="stat">по формуле ЖТ = (мука + воздух + вода + трение) / 3</span>' +
+    '</div>' +
+    '<table><thead><tr><th>Тип дрожжей</th><th class="num">Грамм</th><th class="num">% от муки</th></tr></thead><tbody>' +
+    tr('Свежие прессованные', conv.fresh, conv.freshPct) +
+    tr('Сухие быстродействующие (instant)', conv.instant, conv.instantPct) +
+    tr('Сухие активные', conv.active, conv.activePct) +
+    '</tbody></table>' +
+    '<div class="sub">Ориентир: 1 г сухих быстродействующих ≈ 3 г свежих ≈ 1,2 г сухих активных.</div>';
+
+  // --- план ---
+  var plan = buildPlan(s, r.prefName);
+  var start = s.start || '09:00';
+  var li = plan.steps.map(function(st){
+    return '<tr><td class="num" style="white-space:nowrap"><b>' + clock(start, st.at) + '</b><br>' +
+      '<span style="color:var(--dim);font-size:12px">' + dur(st.min) + '</span></td>' +
+      '<td><b>' + st.title + '</b><br><span style="color:var(--dim);font-size:13.5px">' + st.text + '</span></td></tr>';
+  }).join('');
+  $('plan').innerHTML = '<table><tbody>' + li + '</tbody></table>' +
+    '<div class="sub">Готово к ' + clock(start, plan.totalMinutes) + ' · всего ' + dur(plan.totalMinutes) +
+    ' (без учёта остывания 30–40 минут).</div>';
+
+  updateYeastHint();
+  save();
+}
+
+function tr(a, b, c){
+  return '<tr><td>' + a + '</td><td class="num"><b>' + b + '</b></td><td class="num" style="color:var(--dim)">' + c + '</td></tr>';
+}
+function yeastLabel(type){
+  return type === 'instant' ? 'Дрожжи сухие быстродействующие'
+       : type === 'active' ? 'Дрожжи сухие активные'
+       : 'Дрожжи свежие прессованные';
+}
+/** Пересчёт одного и того же количества дрожжей в другие типы (и в % от муки). */
+function yeastConversions(grams, type, flour){
+  var fresh;
+  if (type === 'instant') fresh = grams * 3;
+  else if (type === 'active') fresh = grams * 2.5;
+  else fresh = grams;
+  var p = function(x){ return flour > 0 ? pct(x / flour * 100) : '—'; };
+  return {
+    fresh: g(fresh), instant: g(fresh / 3), active: g(fresh / 2.5),
+    freshPct: p(fresh), instantPct: p(fresh / 3), activePct: p(fresh / 2.5)
+  };
+}
+function updateYeastHint(){
+  var t = $('yeastType').value;
+  $('yeastHint').textContent = t === 'instant'
+    ? 'быстрое тесто: 0,2–0,3 % instant; долгое: 0,1 %'
+    : t === 'active'
+      ? 'быстрое тесто: 0,3–0,4 % активных'
+      : 'долгое брожение: 0,5–1 % свежих';
+}
+
+function save(){
+  try { localStorage.setItem(STORE, JSON.stringify(readState())); } catch(e){}
+}
+function load(){
+  var raw = null;
+  try { raw = localStorage.getItem(STORE); } catch(e){}
+  if (!raw) return false;
+  try {
+    var s = JSON.parse(raw);
+    var merged = {};
+    Object.keys(DEFAULTS).forEach(function(k){ merged[k] = (s[k] !== undefined ? s[k] : DEFAULTS[k]); });
+    ids.forEach(function(id){
+      var el = $(id);
+      if (el && merged[id] !== undefined) el.value = merged[id];
+    });
+    Object.keys(merged).forEach(function(k){ cache[k] = merged[k]; });
+    renderModeInputs();
+    $('savedNote').textContent = 'Настройки сохранены в этом браузере.';
+    return true;
+  } catch(e){ return false; }
+}
+
+// ---------- события ----------
+document.addEventListener('input', function(e){
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')){
+    if (e.target.id === 'mode') renderModeInputs();
+    activePreset = -1;
+    render();
+  }
+});
+document.addEventListener('change', function(e){
+  if (e.target && e.target.tagName === 'SELECT') render();
+});
+$('presets').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-i]');
+  if (b) applyPreset(parseInt(b.dataset.i, 10));
+});
+$('printBtn').addEventListener('click', function(){ window.print(); });
+var sbJump = $('sbJump');
+if (sbJump) sbJump.addEventListener('click', function(){
+  var el = $('result');
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior:'smooth', block:'start' });
+});
+$('copyBtn').addEventListener('click', function(){
+  var s = readState();
+  var target = s.mode === 'dough' ? Math.round(s.doughWeight)
+             : (s.mode === 'loaves' ? Math.round(s.loaves * s.loafWeight) : null);
+  var r = roundRecipe(computeRecipe(s), target);
+  if (!r) return;
+  var lines = ['ЧИАБАТТА — рецепт', ''];
+  if (s.prefPct > 0){
+    lines.push(r.prefName.toUpperCase() + ' (' + s.prefHours + ' ч при ' + s.prefTemp + ' °C):');
+    lines.push('  мука ' + g(r.prefFlour) + ' г, вода ' + g(r.prefWater) + ' г' +
+      (r.prefYeast > 0 ? ', дрожжи ' + g(r.prefYeast) + ' г' : ''));
+    lines.push('');
+  }
+  lines.push('ОСНОВНОЕ ТЕСТО:');
+  if (s.prefPct > 0) lines.push('  вся закваска ' + g(r.prefWeight) + ' г');
+  lines.push('  мука ' + g(r.mainFlour) + ' г');
+  lines.push('  вода ' + g(r.mainWater) + ' г (температура ' + Math.round(waterTemp(s.ddt, s.flourTemp, s.roomTemp, s.friction)) + ' °C)');
+  if (r.mainYeast > 0) lines.push('  ' + yeastLabel(s.yeastType).toLowerCase() + ' ' + g(r.mainYeast) + ' г');
+  lines.push('  соль ' + g(r.salt) + ' г');
+  lines.push('');
+  lines.push('Итого теста ' + g(r.totalDough) + ' г, гидратация ' + pct(r.pWater) + ', соль ' + pct(r.pSalt) + '.');
+  var text = lines.join('\n');
+  var done = function(){ $('copyBtn').textContent = 'Скопировано ✓'; setTimeout(function(){ $('copyBtn').textContent = 'Скопировать рецепт текстом'; }, 1600); };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ window.prompt('Скопируйте текст:', text); });
+  } else {
+    window.prompt('Скопируйте текст:', text);
+  }
+});
+
+// ---------- старт ----------
+if (!load()){
+  ids.forEach(function(id){
+    var el = $(id);
+    if (el && DEFAULTS[id] !== undefined && !el.value) el.value = DEFAULTS[id];
+  });
+  renderModeInputs();
+}
+render();
+
+// ---------- офлайн-режим на телефоне ----------
+// Кэш и установка на главный экран работают, только если страница открыта
+// с сервера (https или localhost), а не как локальный файл.
+var canUseSW = typeof navigator !== 'undefined' && navigator.serviceWorker &&
+  typeof location !== 'undefined' &&
+  (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+if (canUseSW){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+
+// ---------- запуск внутри Telegram (Mini App) ----------
+// Если страница открыта как обычный сайт, этот блок просто ничего не делает.
+var tg = (typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp)
+  ? window.Telegram.WebApp : null;
+if (tg){
+  try {
+    tg.ready();
+    tg.expand();                       // раскрыть на весь экран
+    if (tg.setHeaderColor) tg.setHeaderColor('#141110');
+    if (tg.setBackgroundColor) tg.setBackgroundColor('#141110');
+  } catch (e) { /* старая версия клиента Telegram — не страшно */ }
+}
+</script>
+</body>
+</html>
